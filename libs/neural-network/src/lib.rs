@@ -1,20 +1,30 @@
 use rand::{Rng, RngCore};
 
 #[derive(Debug)]
-pub struct Network{
-    layers: Vec<Layer>,
-}
-
-#[derive(Debug)]
+/// Layer Topology Abstraction
+/// Each layer will have a number of neurons
 pub struct LayerTopology {
     pub neurons: usize,
 }
 
+#[derive(Debug)] 
+/// Neural Network Abstraction
+/// A neural network will have a vector of type Layer.
+pub struct Network{
+    layers: Vec<Layer>,
+}
+
 impl Network {
+    /// create a new neural network object.
     pub fn new(layers: Vec<Layer>) -> Self {
         Self {layers}
     }
 
+    /// create a new neural network object with random weights and biases.
+    /// the layers count will be equal to the length of the layers vector minus 1.
+    /// if zeroth layer has n neurons, that means the input size for first layer is n.
+    /// > ex: if the layer topology is [3,2,3], it means that first layer will have 3 inputs for each neuron and 2 outputs in total, second layer will have 2 inputs for each neuron and 3 outputs.  
+    /// So the network in whole will have 3 inputs and 3 outputs.
     pub fn random(rng: &mut dyn RngCore, layers: &[LayerTopology]) -> Self {
 
         assert!(layers.len() > 1);
@@ -23,9 +33,10 @@ impl Network {
                             .map(|adjacent_layers| Layer::random(rng, adjacent_layers[0].neurons, adjacent_layers[1].neurons))
                             .collect();
 
-        Self {layers: layers}
+        Self {layers}
     }
 
+    /// process inputs for neural network and returns a vector of outputs based on neurons in the last layer.
     pub fn propogate(&self, inputs: Vec<f32>) -> Vec<f32> {
         self.layers
             .iter()
@@ -34,21 +45,28 @@ impl Network {
 }
 
 #[derive(Debug)]
+/// Abstraction for Layer
+/// Each layer holds a vector of neurons
 pub struct Layer{
     neurons: Vec<Neuron>
 }
 
 impl Layer {
 
+    /// create a new layer object with random neurons
+    /// The number of neurons in the layer is equal to the output size
+    /// The number of weights in each neuron is equal to the input size
     fn random(rng: &mut dyn RngCore, input_size: usize, output_size: usize) -> Self{
         let neurons = (0..output_size)
                             .map(|_output_neuron_id| Neuron::random(rng, input_size))
                             .collect();
 
-        Self {neurons: neurons}
+        Self {neurons}
 
     }
 
+    /// propogate the input through the layer
+    /// The output is the sum of the product of the weights and inputs
     fn propogate(&self, inputs: Vec<f32>) -> Vec<f32> {
 
         self.neurons
@@ -60,6 +78,9 @@ impl Layer {
 }
 
 #[derive(Debug)]
+/// Abstraction for Neuron
+/// Each neuron holds a bias and a vector of weights
+/// The number of weights is equal to the input size
 struct Neuron{
     bias: f32,
     weights: Vec<f32>
@@ -67,6 +88,7 @@ struct Neuron{
 
 impl Neuron {
 
+    /// create a new neuron object with random weights and bias
     fn random(rng: &mut dyn RngCore, input_size: usize) -> Self {
         
         let bias = rng.gen_range(-1.0..=1.0);
@@ -76,6 +98,9 @@ impl Neuron {
         Self {bias, weights}
     }
 
+    /// propogate the input through the neuron
+    /// The output is the sum of the product of the weights and inputs
+    /// The output is then passed through a ReLU function
     fn propogate(&self, inputs: &[f32]) -> f32 {
 
         assert_eq!(inputs.len(), self.weights.len());
