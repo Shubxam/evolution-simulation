@@ -3,9 +3,10 @@ use rand::{Rng, RngCore};
 use std::ops::Index;
 
 // this struct is generic over trait S
-pub struct GeneticAlgorithm<S, C> {
+pub struct GeneticAlgorithm<S, C, M> {
     selection_method: S,
     crossover_method: C,
+    mutation_method: M,
 }
 
 pub trait Individual {
@@ -83,6 +84,40 @@ pub trait CrossoverMethod {
     fn crossover(&self, rng: &mut dyn RngCore, parent_a: &Chromosome, parent_b: &Chromosome) -> Chromosome;
 }
 
+pub trait MutationMethod {
+    fn mutation(&self, rng: &mut dyn RngCore, child: &mut Chromosome);
+}
+
+#[derive(Debug, Clone)]
+pub struct GaussianMutation {
+    // probability of mutation for a gene
+    // [0,1]
+    chance: f32,
+    // max Degree of mutation
+    // [0,3]
+    magnitude: f32,
+}
+
+impl GaussianMutation {
+    pub fn new(chance: f32, magnitude: f32) -> Self {
+        assert!(chance >= 0.0 && chance <= 1.0);
+        Self {
+            chance, magnitude
+        }
+    }
+}
+
+impl MutationMethod for GaussianMutation {
+    fn mutation(&self, rng: &mut dyn RngCore, child: &mut Chromosome) {
+        for gene in child.iter_mut(){
+            if rng.gen_bool(self.chance as f64){
+                let sign = if rng.gen_bool(0.5) {-1.0} else {1.0};
+                *gene += sign * self.magnitude * rng.gen::<f32>();
+            }
+        }
+    }
+}
+
 // Implementation of Selection Method trait for Type Roulette Wheel Selection.
 impl SelectionMethod for RouletteWheelSelection {
     fn select<'a, I>(&self, rng: &mut dyn RngCore, population: &'a [I]) -> &'a I
@@ -108,18 +143,20 @@ impl CrossoverMethod for UniformCrossover {
     }
 }
 
-impl<S, C> GeneticAlgorithm<S, C> 
+impl<S, C, M> GeneticAlgorithm<S, C, M> 
 where 
     S: SelectionMethod, 
     C: CrossoverMethod,
+    M: MutationMethod,
 {
 
     pub fn new(
-        selection_method: S, crossover_method: C
+        selection_method: S, crossover_method: C, mutation_method: M,
     )-> Self {
         Self { 
             selection_method, 
             crossover_method, 
+            mutation_method,
         }
     }
 
@@ -139,7 +176,7 @@ where
                 // Crossover
                 let mut child = self.crossover_method.crossover(rng, parent_a, parent_b);
                 // TODO Mutation
-                todo!();
+                self.mutation_method.mutation(rng, &mut child);
             }
         ).collect()
     }
@@ -222,5 +259,95 @@ mod tests {
 
         assert_eq!(diff_a, 49);
         assert_eq!(diff_b, 51);
+    }
+    mod gaussian_mutation{
+        use super::*;
+        fn actual(chance:f32, magnitude:f32) -> Vec<f32>{
+            let mut rng = ChaCha8Rng::from_seed(Default::default());
+            let mut child = vec![1.0, 2.0, 3.0, 4.0, 5.0].into_iter().collect();
+
+            GaussianMutation::new(chance, magnitude).mutation(&mut rng, &mut child);
+            child.into_iter().collect()
+        }
+
+        mod zero_chance{
+            use approx::assert_relative_eq;
+            fn actual(magnitude:f32) -> Vec<f32>{
+                super::actual(0.0, magnitude)
+            }
+            mod zero_magnitude{
+                use super::*;
+                #[test]
+                fn doesnot_change_original_chromosome(){
+                    let actual = actual(0.0);
+                    let expected = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+
+                    assert_relative_eq!(actual.as_slice(), expected.as_slice());
+                }
+            }
+            mod non_zero_magnitude{
+                use super::*;
+                #[test]
+                fn doesnot_change_original_chromosome(){
+                    let actual = super::actual(0.5);
+                    let expected = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+
+                    assert_relative_eq!(actual.as_slice(), expected.as_slice());
+                }
+            }
+        }
+        mod zero_to_1_chance{
+            use approx::assert_relative_eq;
+            fn actual(magnitude:f32) -> Vec<f32> {
+                super::actual(0.3, magnitude)
+            }
+            mod zero_magnitude{
+                use super::*;
+                #[test]
+                fn doesnot_change_original_chromosome(){
+                    let actual = actual(0.0);
+                    let expected = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+
+                    assert_relative_eq!(actual.as_slice(), expected.as_slice());
+                }
+            }
+            mod non_zero_magnitude{
+                use super::*;
+                #[test]
+                fn might_change_the_original_chromosome(){
+                    let actual = actual(2.1);
+                    let expected = vec![1.0, 2.0, 2.0576246, 4.0, 5.0];
+
+                    assert_relative_eq!(actual.as_slice(), expected.as_slice());
+                }
+            }
+
+        }
+        mod certain_chance{
+            use approx::assert_relative_eq;
+            fn actual(magnitude:f32) -> Vec<f32> {
+                super::actual(1.0, magnitude)
+            }
+            mod zero_magnitude{
+                use super::*;
+                #[test]
+                fn doesnot_change_original_chromosome(){
+                    let actual = actual(0.0);
+                    let expected = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+
+                    assert_relative_eq!(actual.as_slice(), expected.as_slice());
+                }
+            }
+            mod non_zero_magnitude{
+                use super::*;
+                #[test]
+                fn changes_the_original_chromosome(){
+                    let actual = actual(2.7);
+                    let expected = vec![3.4544702, 2.6275227, 1.7883743, 3.7327676, 3.0489318];
+
+                    assert_relative_eq!(actual.as_slice(), expected.as_slice());
+                }
+            }
+        }
     }
 }
