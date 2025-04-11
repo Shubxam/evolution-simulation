@@ -12,6 +12,9 @@ impl Chromosome {
     pub fn len(&self) -> usize {
         self.genes.len()
     }
+
+    // we create these 2 functions to allow the genes to be accessed and mutated from outside this module.
+    // we do this because the field genes is private.
     
     // function returns a type which implements Iterator trait generic over f32
     pub fn iter(&self) -> impl Iterator<Item = &f32> {
@@ -23,20 +26,22 @@ impl Chromosome {
     }
 }
 
-// implementation of Index trait for Chromosome struct
+// implements Index trait to enable indexing operations e.g. Chromosome[0]
 impl Index<usize> for Chromosome {
     
-    // type alias for Output associated type
+    // type alias for Output associated type requirement of Index trait
     type Output = f32;
     
+    // returns &f32
     fn index(&self, index: usize) -> &Self::Output {
         &self.genes[index]
     }
 }
 
-// implementation of FromIterator trait for Chromosome struct
-// allowing to create a Chromosome from an iterator of f32 values
+// allows for Chromosome to be created from an (vector) iterator of f32
 impl FromIterator<f32> for Chromosome {
+
+    // the argument must implement IntoIterator trait and contain item of type f32
     fn from_iter<T: IntoIterator<Item = f32>>(iter: T) -> Self {
         Self {
             genes: iter.into_iter().collect(),
@@ -45,10 +50,13 @@ impl FromIterator<f32> for Chromosome {
     
 }
 
-// implementation of IntoIterator trait for Chromosome struct
-// allowing to iterate over the genes of a Chromosome
+// allows for Chromosome to be turned into an iterator (vector) of f32
 impl IntoIterator for Chromosome {
+
+    // type of elements in the iterator
     type Item = f32;
+
+    // type annotation of iterator
     type IntoIter = std::vec::IntoIter<f32>;
     
     fn into_iter(self) -> Self::IntoIter {
@@ -57,11 +65,12 @@ impl IntoIterator for Chromosome {
 }
 
 
-pub struct RouletteWheelSelection;
+// selection is proportonal to fitness of individual
+pub struct RouletteWheelSelection; // struct without any field
 
 /// A trait implementing selection method that selects individuals based on their fitness.
 pub trait SelectionMethod {
-    // lifetime specifier to tie input and output reference together
+    // The lifetime 'a ensures safe borrowing by tying the lifetime of the returned reference to the input slice.
     // function works with any generic type I that implements Individual trait.
     fn select<'a, I>(&self, rng: &mut dyn RngCore, population: &'a [I]) -> &'a I
     where
@@ -80,9 +89,11 @@ impl SelectionMethod for RouletteWheelSelection {
     }
 }
 
+
 pub struct UniformCrossover;
 
 pub trait CrossoverMethod {
+    // crossover method is used to combine two parent chromosomes to create a child chromosome
     fn crossover(&self, rng: &mut dyn RngCore, parent_a: &Chromosome, parent_b: &Chromosome) -> Chromosome;
 }
 
@@ -101,6 +112,7 @@ impl CrossoverMethod for UniformCrossover {
 
 
 pub trait MutationMethod {
+    // mutation method is used to mutate a child chromosome
     fn mutation(&self, rng: &mut dyn RngCore, child: &mut Chromosome);
 }
 
@@ -125,16 +137,19 @@ impl GaussianMutation {
 
 impl MutationMethod for GaussianMutation {
     fn mutation(&self, rng: &mut dyn RngCore, child: &mut Chromosome) {
+        // mutates each value in the child chromosome individually
         for gene in child.iter_mut(){
             if rng.gen_bool(self.chance as f64){
                 let sign = if rng.gen_bool(0.5) {-1.0} else {1.0};
+                // rng.gen::<f32>() generates a random number between 0.0 and 1.0
                 *gene += sign * self.magnitude * rng.gen::<f32>();
             }
         }
     }
 }
 
-// this struct is generic over trait S
+// this struct is generic over traits S, C, M
+// S is SelectionMethod, C is CrossoverMethod, M is MutationMethod
 pub struct GeneticAlgorithm<S, C, M> {
     selection_method: S,
     crossover_method: C,
@@ -149,6 +164,7 @@ where
     M: MutationMethod,
 {
 
+    // constructor for GeneticAlgorithm
     pub fn new(
         selection_method: S, crossover_method: C, mutation_method: M,
     )-> Self {
@@ -160,6 +176,8 @@ where
     }
 
 
+    // evolve method takes a population of individuals and returns a new population
+    // in order for population to evolve, it calls evolve method once for each individual, which creates a new individual
     pub fn evolve<I>(&self, rng: &mut dyn RngCore, population: &[I]) -> Vec<I>
     where
         I: Individual,

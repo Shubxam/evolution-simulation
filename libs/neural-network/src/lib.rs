@@ -23,12 +23,14 @@ impl Network {
     /// create a new neural network object with random weights and biases.
     /// the layers count will be equal to the length of the layers vector minus 1.
     /// if zeroth layer has n neurons, that means the input size for first layer is n.
-    /// > ex: if the layer topology is [3,2,3], it means that first layer will have 3 inputs for each neuron and 2 outputs in total, second layer will have 2 inputs for each neuron and 3 outputs.  
-    /// So the network in whole will have 3 inputs and 3 outputs.
+    /// If neural network has [5,4,3,3] layers, it means that first layer will have 5 inputs for each neuron and 4 outputs in total, second layer will have 4 inputs for each neuron and 3 outputs.
+    /// The last layer will have 3 outputs.
+    /// So the network in whole will have 5 inputs and 3 outputs.
     pub fn random(rng: &mut dyn RngCore, layers: &[LayerTopology]) -> Self {
 
         assert!(layers.len() > 1);
 
+        // layer count in network will be the length of the input layers vector minus 1.
         let layers = layers.windows(2)
                             .map(|adjacent_layers| Layer::random(rng, adjacent_layers[0].neurons, adjacent_layers[1].neurons))
                             .collect();
