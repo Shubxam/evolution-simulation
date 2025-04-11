@@ -3,8 +3,10 @@
 mod world;
 mod animal;
 mod food;
+mod eye;
 
-pub use self::{animal::*, food::*, world::*};
+// pub because we want to use the structs in other files
+pub use self::{animal::*, food::*, world::*, eye::*}; // imports all public modules from submodules to this crate
 
 use ::nalgebra as na;
 use rand::{Rng, RngCore};
