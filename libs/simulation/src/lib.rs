@@ -1,28 +1,19 @@
 // this file handles the simulation logic
 
+mod world;
+mod animal;
+mod food;
+
+pub use self::{animal::*, food::*, world::*};
+
 use ::nalgebra as na;
 use rand::{Rng, RngCore};
 pub struct Simulation {
     world: World,
 }
 
-#[derive(Debug)]
-pub struct World {
-    animals: Vec<Animal>,
-    foods: Vec<Food>,
-}
 
-#[derive(Debug)]
-pub struct Animal {
-    position: na::Point2<f32>,
-    rotation: na::Rotation2<f32>,
-    speed: f32,
-}
 
-#[derive(Debug)]
-pub struct Food {
-    position: na::Point2<f32>,
-}
 
 impl Simulation {
     pub fn random(rng: &mut dyn RngCore) -> Self {
@@ -59,7 +50,7 @@ impl Simulation {
     /// If an animal is close enough to a food, the food is moved to a new random position.
     /// The distance threshold for a collision is set to 0.01.
     fn process_collisions(&mut self, rng: &mut dyn RngCore) {
-        for animal in &mut self.world.animals {
+        for animal in &self.world.animals {
             for food in &mut self.world.foods {
                 let distance = na::distance(&animal.position, &food.position);
 
@@ -71,55 +62,4 @@ impl Simulation {
     }
 }
 
-impl World {
-    pub fn random(rng: &mut dyn RngCore) -> Self {
-        // generate m animals
-        let animals = (0..40).map(|_| Animal::random(rng)).collect();
 
-        // generate n foods
-        let foods = (0..60).map(|_| Food::random(rng)).collect();
-
-        Self { animals, foods }
-    }
-
-    // getter function, allows us to get the state of world objects, e.g. location of food, animals, etc.
-    pub fn animals(&self) -> &[Animal] {
-        &self.animals
-    }
-
-    pub fn foods(&self) -> &[Food] {
-        &self.foods
-    }
-}
-
-impl Animal {
-    pub fn random(rng: &mut dyn RngCore) -> Self {
-        Self {
-            position: rng.gen(),
-            rotation: rng.gen(),
-            speed: 0.002,
-        }
-    }
-
-    // getter functions to pass immutable access to the fields.
-    pub fn position(&self) -> na::Point2<f32> {
-        self.position
-    }
-
-    pub fn rotation(&self) -> na::Rotation2<f32> {
-        self.rotation
-    }
-}
-
-impl Food {
-    pub fn random(rng: &mut dyn RngCore) -> Self {
-        Self {
-            position: rng.gen(),
-        }
-    }
-
-    // getter function
-    pub fn position(&self) -> na::Point2<f32> {
-        self.position
-    }
-}
