@@ -29,7 +29,7 @@ impl Simulation {
         &self.world
     }
 
-    /// This function is called to advance the simulation by one step.
+    /// This function is called to advance the simulation one step ahead.
     /// It processes the movements of the animals and the collisions with the food.
     pub fn step(&mut self, rng: &mut dyn RngCore) {
         self.process_collisions(rng);
